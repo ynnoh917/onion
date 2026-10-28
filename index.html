@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Onion v3 密钥生成器</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b22;--bd:#30363d;--tx:#c9d1d9;--mu:#8b949e;--ac:#58a6ff;--dg:#f85149;--wn:#d29922}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.6 system-ui,sans-serif}
+  .banner{background:#3d1e00;border-bottom:1px solid var(--wn);padding:10px 16px;font-size:13px;color:#f0c674;text-align:center}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:var(--mu);font-size:13px;margin-bottom:20px}
+  .panel{background:var(--panel);border:1px solid var(--bd);border-radius:10px;padding:18px;margin-bottom:16px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tabs button{flex:1;background:transparent;border:1px solid var(--bd);color:var(--tx);padding:8px;border-radius:8px;cursor:pointer}
+  .tabs button.on{background:var(--ac);color:#0d1117;border-color:var(--ac);font-weight:600}
+  button{background:var(--ac);color:#0d1117;border:none;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd);font-weight:500}
+  button.dgr{background:transparent;color:var(--dg);border:1px solid var(--dg)}
+  input[type=text]{background:#0d1117;border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:9px 12px;font-family:monospace;font-size:14px;width:120px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .hint{font-size:12px;color:var(--mu)}
+  .field{margin-bottom:14px}
+  .field-l{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+  .val{font-family:monospace;font-size:13px;background:#0d1117;border:1px solid var(--bd);border-radius:8px;padding:10px 12px;word-break:break-all;user-select:all}
+  .val.addr{color:#7ee787;font-size:14px}
+  .val.sec{color:#ff7b72;filter:blur(4px);transition:filter .2s}
+  .val.sec.on{filter:none}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px;border-bottom:1px solid var(--bd);text-align:left}
+  th{color:var(--mu);font-weight:500;font-size:12px}
+  td.addr{font-family:monospace;color:#7ee787;word-break:break-all}
+  .hidden{display:none}
+  .spin{display:inline-block;width:12px;height:12px;border:2px solid #fff3;border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="banner"><strong>安全提示：</strong>密钥仅在浏览器内存生成，不上传任何服务器。请勿在公共设备使用。</div>
+<div class="wrap">
+  <h1>Onion v3 密钥生成器</h1>
+  <p class="sub">Ed25519 · 虚荣前缀 · 批量多 Worker · 纯前端</p>
+
+  <div class="tabs">
+    <button id="tabSingle" class="on">单个生成</button>
+    <button id="tabVanity">虚荣 / 批量</button>
+  </div>
+
+  <div class="panel" id="singlePanel">
+    <div class="row">
+      <button id="genOne">生成新密钥对</button>
+      <span class="hint" id="st1"></span>
+    </div>
+  </div>
+
+  <div class="panel hidden" id="vanityPanel">
+    <div class="row" style="margin-bottom:12px">
+      <label>前缀 <input type="text" id="prefix" value="abc" maxlength="5" placeholder="如 abc"></label>
+      <label>目标数量 <input type="text" id="target" value="5" style="width:60px"></label>
+      <button id="genVanity">开始搜索</button>
+      <button id="stopVanity" class="sec" disabled>停止</button>
+    </div>
+    <div class="hint" id="st2" style="margin-bottom:12px"></div>
+    <table id="vanityTable" class="hidden">
+      <thead><tr><th>地址</th><th>私钥</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="panel hidden" id="resultPanel">
+    <div class="field">
+      <div class="field-l"><span>.onion 地址</span><button class="sec" data-copy="rAddr">复制</button></div>
+      <div class="val addr" id="rAddr"></div>
+    </div>
+    <div class="field">
+      <div class="field-l"><span>公钥 Base64</span><button class="sec" data-copy="rPub">复制</button></div>
+      <div class="val" id="rPub"></div>
+    </div>
+    <div class="field">
+      <div class="field-l"><span>私钥 Base64</span><button class="sec" data-toggle="rSec">显示</button></div>
+      <div class="val sec" id="rSec"></div>
+    </div>
+    <div class="row">
+      <button data-dl="hostname">下载 hostname</button>
+      <button class="sec" data-dl="hs_ed25519_public_key">下载公钥文件</button>
+      <button class="sec" data-dl="hs_ed25519_secret_key">下载私钥文件</button>
+      <button class="dgr" id="clearAll">清空</button>
+    </div>
+    <p class="hint" style="margin-top:12px">放入隐藏服务目录，权限 700 / 600，重启 Tor 生效。</p>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{
+  "@noble/ed25519":"https://cdn.jsdelivr.net/npm/@noble/ed25519@2.1.0/+esm",
+  "@noble/hashes/sha3":"https://cdn.jsdelivr.net/npm/@noble/hashes@1.4.0/sha3/+esm"
+}}
+</script>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
